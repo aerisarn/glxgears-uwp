@@ -1,0 +1,2 @@
+MainPackage=D:\gitroot\uwp\glxgears-uwp\GLXGears\x64\Debug\GLXGears\GLXGears_1.0.0.0_x64_Debug.msix
+SymbolPackage=D:\gitroot\uwp\glxgears-uwp\GLXGears\x64\Debug\Symbols\GLXGears_1.0.0.0_x64_Debug.appxsym

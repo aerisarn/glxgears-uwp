@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+/GLXGears/.vs
+/GLXGears/AppPackages
+/GLXGears/x64
