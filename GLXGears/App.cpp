@@ -4,23 +4,11 @@
 #include <ppltasks.h>
 
 #include <GL/gl.h>
+#include <uwpgdi.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265
 #endif /* !M_PI */
-
-//These are undefined on UWP without WinGDI
-extern "C" {
-	__declspec(dllimport) HGLRC APIENTRY xwglCreateContext(HDC hdc);
-	__declspec(dllimport) BOOL APIENTRY xwglMakeCurrent(HDC hdc, HGLRC hglrc);
-	__declspec(dllimport) BOOL APIENTRY xwglSwapBuffers(HDC hdc);
-	__declspec(dllexport)
-		BOOL
-		WINAPI
-		xSetClientRect(
-			_In_ HWND hWnd,
-			_In_ LPRECT lpRect);
-}
 
 /* Global vars */
 static HDC hDC;
@@ -209,12 +197,14 @@ static void reshape(int width, int height) {
 
 static void init(void) {
 
-	if (!(hDC = (HDC)hWnd) || 
-		!(hRC = xwglCreateContext(hDC)) ||
-		!(xwglMakeCurrent(hDC, hRC)))
+	if (
+		!(hRC = wglCreateContext((HDC)1)) ||
+		!(wglMakeCurrent((HDC)1, hRC)))
 	{
 		exit(-1);
 	}
+
+
 
 	reshape(win_rect.right - win_rect.left, win_rect.bottom - win_rect.top);
 
@@ -333,18 +323,18 @@ void App::SetWindow(CoreWindow^ window)
 		ref new TypedEventHandler<DisplayInformation^, Object^>(this, &App::OnDisplayContentsInvalidated);
 
 	//Save native handle, will be used for the swapchain
-	Platform::Agile<Windows::UI::Core::CoreWindow>	m_window;
-	m_window = window;
-	hWnd = (HWND)reinterpret_cast<IUnknown*>(m_window.Get());
+	//Platform::Agile<Windows::UI::Core::CoreWindow>	m_window;
+	//m_window = window;
+	//hWnd = (HWND)reinterpret_cast<IUnknown*>(m_window.Get());
 
-	//Initialize core rect, will be used for the framebuffer
+	////Initialize core rect, will be used for the framebuffer
 	win_rect.top = 0;
 	win_rect.bottom = ConvertDipsToPixels(window->Bounds.Bottom - window->Bounds.Top, currentDisplayInformation->LogicalDpi);
 	win_rect.left = 0;
 	win_rect.right = ConvertDipsToPixels(window->Bounds.Right - window->Bounds.Left, currentDisplayInformation->LogicalDpi);
 
 	//Set WinGDI Hack Window
-	xSetClientRect(hWnd, &win_rect);
+	//xSetClientRect(hWnd, &win_rect);
 
 	//Init OPENGL
 	init();
@@ -365,7 +355,7 @@ void App::Run()
 			CoreWindow::GetForCurrentThread()->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
 			angle += 2.0;
 			draw();
-			xwglSwapBuffers(hDC);
+			wglSwapBuffers(hDC);
 		}
 		else
 		{

@@ -41,4 +41,7 @@
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="GLXGears_TemporaryKey.pfx" />
+  </ItemGroup>
 </Project>
