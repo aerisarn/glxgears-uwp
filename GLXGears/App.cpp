@@ -6,6 +6,35 @@
 #include <GL/gl.h>
 #include <uwpgdi.h>
 
+// See https://www.khronos.org/registry/OpenGL/extensions/ARB/WGL_ARB_create_context.txt for all values
+#define WGL_CONTEXT_MAJOR_VERSION_ARB             0x2091
+#define WGL_CONTEXT_MINOR_VERSION_ARB             0x2092
+#define WGL_CONTEXT_PROFILE_MASK_ARB              0x9126
+
+#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB          0x00000001
+
+typedef HGLRC WINAPI wglCreateContextAttribsARB_type(HDC hdc, HGLRC hShareContext,
+	const int* attribList);
+wglCreateContextAttribsARB_type* wglCreateContextAttribsARB;
+
+
+typedef BOOL WINAPI wglChoosePixelFormatARB_type(HDC hdc, const int* piAttribIList,
+	const FLOAT* pfAttribFList, UINT nMaxFormats, int* piFormats, UINT* nNumFormats);
+wglChoosePixelFormatARB_type* wglChoosePixelFormatARB;
+
+// See https://www.khronos.org/registry/OpenGL/extensions/ARB/WGL_ARB_pixel_format.txt for all values
+#define WGL_DRAW_TO_WINDOW_ARB                    0x2001
+#define WGL_ACCELERATION_ARB                      0x2003
+#define WGL_SUPPORT_OPENGL_ARB                    0x2010
+#define WGL_DOUBLE_BUFFER_ARB                     0x2011
+#define WGL_PIXEL_TYPE_ARB                        0x2013
+#define WGL_COLOR_BITS_ARB                        0x2014
+#define WGL_DEPTH_BITS_ARB                        0x2022
+#define WGL_STENCIL_BITS_ARB                      0x2023
+
+#define WGL_FULL_ACCELERATION_ARB                 0x2027
+#define WGL_TYPE_RGBA_ARB                         0x202B
+
 #ifndef M_PI
 #define M_PI 3.14159265
 #endif /* !M_PI */
@@ -195,16 +224,87 @@ static void reshape(int width, int height) {
 	glTranslatef(0.0, 0.0, -60.0);
 }
 
+using namespace Windows::ApplicationModel;
+using namespace Windows::ApplicationModel::Core;
+using namespace Windows::ApplicationModel::Activation;
+using namespace Windows::UI::Core;
+using namespace Windows::UI::Input;
+using namespace Windows::System;
+using namespace Windows::Foundation;
+using namespace Windows::Graphics::Display;
+
+HWND getHWND()
+{
+	CoreWindow^ coreWindow = CoreWindow::GetForCurrentThread();
+	Platform::Agile<Windows::UI::Core::CoreWindow> m_window;
+	m_window = coreWindow;
+	return (HWND)reinterpret_cast<IUnknown*>(m_window.Get());
+}
+
 static void init(void) {
 
-	if (
-		!(hRC = wglCreateContext((HDC)1)) ||
-		!(wglMakeCurrent((HDC)1, hRC)))
-	{
-		exit(-1);
+	//if (
+	//	!(hRC = wglCreateContext((HDC)1)) ||
+	//	!(wglMakeCurrent((HDC)1, hRC)))
+	//{
+	//	exit(-1);
+	//}
+
+	HDC dc = (HDC)getHWND();
+	HGLRC dummy_context = wglCreateContext(dc);
+	if (!dummy_context) {
+		OutputDebugStringA("Failed to create a dummy OpenGL rendering context.");
+	}
+	if (!wglMakeCurrent(dc, dummy_context)) {
+		OutputDebugStringA("Failed to activate dummy OpenGL rendering context.");
 	}
 
+	wglCreateContextAttribsARB = (wglCreateContextAttribsARB_type*)wglGetProcAddress(
+		"wglCreateContextAttribsARB");
 
+	wglChoosePixelFormatARB = (wglChoosePixelFormatARB_type*)wglGetProcAddress(
+		"wglChoosePixelFormatARB");
+
+	wglMakeCurrent(dc, 0);
+	wglDeleteContext(dummy_context);
+
+	// Now we can choose a pixel format the modern way, using wglChoosePixelFormatARB.
+	int pixel_format_attribs[] = {
+		WGL_DRAW_TO_WINDOW_ARB,     GL_TRUE,
+		WGL_SUPPORT_OPENGL_ARB,     GL_TRUE,
+		WGL_DOUBLE_BUFFER_ARB,      GL_TRUE,
+		WGL_ACCELERATION_ARB,       WGL_FULL_ACCELERATION_ARB,
+		WGL_PIXEL_TYPE_ARB,         WGL_TYPE_RGBA_ARB,
+		WGL_COLOR_BITS_ARB,         32,
+		WGL_DEPTH_BITS_ARB,         24,
+		WGL_STENCIL_BITS_ARB,       8,
+		0
+	};
+
+	int pixel_format;
+	UINT num_formats;
+	wglChoosePixelFormatARB(dc, pixel_format_attribs, 0, 1, &pixel_format, &num_formats);
+	if (!num_formats) {
+		OutputDebugStringA("Failed to set the OpenGL 3.3 pixel format.");
+	}
+
+	int gl43_attribs[] = {
+		WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
+		WGL_CONTEXT_MINOR_VERSION_ARB, 0, //TODO
+		WGL_CONTEXT_PROFILE_MASK_ARB,  WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+		0,
+	};
+
+	HGLRC gl43_context = wglCreateContextAttribsARB(dc, 0, gl43_attribs);
+	if (!gl43_context) {
+		OutputDebugStringA("Failed to create OpenGL 4.3 context.");
+	}
+
+	if (!wglMakeCurrent(dc, gl43_context)) {
+		OutputDebugStringA("Failed to activate OpenGL 4.3 rendering context.");
+	}
+	hDC = dc;
+	hRC = gl43_context;
 
 	reshape(win_rect.right - win_rect.left, win_rect.bottom - win_rect.top);
 

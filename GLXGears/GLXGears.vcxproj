@@ -257,7 +257,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="C:\Program Files (x86)\Windows Kits\10\Redist\D3D\x64\dxil.dll">
+    <Content Include="..\..\mesa-uwp\install_$(Configuration)\bin\libglapi.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
